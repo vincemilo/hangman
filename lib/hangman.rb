@@ -1,3 +1,5 @@
+require 'yaml'
+
 class Hangman
   attr_reader :word, :guesses, :correct_guesses, :guess_list, :correct_letters
 
@@ -7,6 +9,28 @@ class Hangman
     @correct_guesses = []
     @guess_list = []
     @guesses = 0
+  end
+
+  protected
+
+  def to_yaml
+    yaml = YAML.dump(self)
+    File.open('save_game.yaml', 'w+') { |e| e.write yaml }
+    puts 'Game saved'
+    abort
+  end
+
+  def from_yaml
+    save_game = File.open('save_game.yaml')
+    @load = YAML.load(save_game)
+    puts 'Game loaded'
+    @load.status
+    @load.play_game
+  end
+
+  def status
+    puts "Your guesses so far: #{@guess_list}"
+    puts "You have #{10 - @guesses} incorrect guesses left"
   end
 
   def generate_word
@@ -34,19 +58,33 @@ class Hangman
   def correct_guess
     if @correct_guesses.sort == @correct_letters.uniq.sort
       puts "You win! The word was: #{@word}"
-      @guesses = 10
+      abort
     else
       puts place_letters
     end
   end
 
+  public
+
+  def first_play
+    if File.exist? 'save_game.yaml'
+      puts 'I have detected a saved game, press \'y\' if you would you like to
+continue from this saved game, otherwise press any key to create a new game.'
+      continue = gets.chomp
+      from_yaml if continue == 'y'
+    end
+    play_game
+  end
+
   def play_game
-    p @word
     puts place_letters
     while @guesses < 10
-      puts 'Please enter your letter.'
+      puts 'Please enter your letter. You can also type \'save\' to save your
+progress and quit.'
       guess = gets.chomp
-      if @guess_list.include?(guess)
+      if guess == 'save'
+        to_yaml
+      elsif @guess_list.include?(guess)
         puts 'You already guessed that letter, try again.'
       elsif guess.length > 1
         puts 'Invalid entry. Try again.'
@@ -67,11 +105,10 @@ class Hangman
       end
       return unless @guesses < 10
 
-      puts "Your guesses so far: #{@guess_list}"
-      puts "You have #{10 - @guesses} incorrect guesses left"
+      status
     end
   end
 end
 
 game = Hangman.new
-game.play_game
+game.first_play
